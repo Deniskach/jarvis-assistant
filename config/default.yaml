@@ -1,0 +1,18 @@
+assistant:
+  name: 'Jarvis'
+  language: 'ru-RU'
+  activation_word: 'джарвис'
+
+voice:
+  stt_engine: 'google' # google, vosk, whisper
+  tts_engine: 'pyttsx3' # pyttsx3, gtts
+  pause_threshold: 0.8
+  energy_threshold: 300
+
+hotword:
+  enabled: false
+  model_path: 'models/hotword.pmdl'
+
+logging:
+  level: 'INFO'
+  file: 'logs/jarvis.log'

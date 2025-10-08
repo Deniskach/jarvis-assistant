@@ -1,0 +1,19 @@
+# Основные библиотеки
+speechrecognition==3.10.0
+pyttsx3==2.90
+pyaudio==0.2.11
+
+# Автоматизация
+pyautogui==0.9.53
+psutil==5.9.4
+
+# Конфигурация
+python-dotenv==1.0.0
+pyyaml==6.0
+
+# HTTP запросы
+requests==2.31.0
+
+# Утилиты
+numpy==1.24.3
+click==8.1.4
