@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 
 # Добавляем текущую директорию в Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,9 +23,9 @@ try:
             self.system = SystemController()
             self.ai_client = YandexGPTClient()
             self.ai_manager = AIManager()
+            self.activation_phrase = "джарвис" 
+            self.is_activated = False
         
-        # В КЛАССЕ Jarvis добавьте этот метод:
-
         def _words_to_number(self, text):
             """Преобразует слова в числа (например: 'восемьдесят' → 80)"""
             number_words = {
@@ -52,17 +53,83 @@ try:
                         return tens + ones
             
             # Пробуем найти цифры
-            import re
             numbers = re.findall(r'\d+', text)
             if numbers:
                 return int(numbers[0])
             
             return None
-
+        
+        def _is_volume_command(self, text):
+            """Определяет, является ли текст командой управления громкостью"""
+            text_lower = text.lower()
+            
+            # Явные команды управления громкостью
+            volume_commands = [
+                'громче', 'тише', 'выключи звук', 'включи звук', 
+                'увеличь громкость', 'уменьши громкость',
+                'сделай громче', 'сделай тише'
+            ]
+            
+            # Вопросы и разговоры о громкости
+            volume_questions = [
+                'что тише', 'что громче', 'тише водопад', 'громче самолет',
+                'какой тише', 'какой громче', 'мнение о том что тише',
+                'считаешь что тише', 'думаешь что тише'
+            ]
+            
+            # Проверяем, это команда или вопрос
+            for command in volume_commands:
+                if text_lower == command or text_lower.startswith(command + ' '):
+                    return True
+                    
+            for question in volume_questions:
+                if question in text_lower:
+                    return False
+            
+            # Если есть слова "тише" или "громче" в начале фразы - вероятно команда
+            if text_lower.startswith(('громче', 'тише')):
+                return True
+                
+            # Если это короткая фраза с этими словами - вероятно команда
+            if len(text_lower.split()) <= 3 and any(word in text_lower for word in ['громче', 'тише']):
+                return True
+            
+            # Во всех остальных случаях считаем что это не команда
+            return False
+        
         def process_command(self, text):
             """Обрабатывает команды"""
             text_lower = text.lower()
             
+            # ПЕРВОЕ: Проверяем команды громкости с умным определением
+            if any(word in text_lower for word in ['громче', 'тише', 'выключи звук', 'включи звук']):
+                is_volume_command = self._is_volume_command(text_lower)
+                
+                if is_volume_command:
+                    # Это команда управления громкостью
+                    if 'громче' in text_lower:
+                        action = 'громче'
+                    elif 'тише' in text_lower:
+                        action = 'тише'
+                    elif 'включи звук' in text_lower:
+                        action = 'включить звук'
+                    else:
+                        action = 'выключить звук'
+                    response = self.system.volume_control(action)
+                    self.tts.speak(response)
+                    return True
+                else:
+                    # Это вопрос или разговор - отправляем в ИИ
+                    if self.ai_client.is_configured():
+                        context = self.ai_manager.get_conversation_context()
+                        response = self.ai_client.chat(text, context)
+                        self.ai_manager.add_to_history(text, response)
+                    else:
+                        response = "ИИ не настроен"
+                    self.tts.speak(response)
+                    return True
+            
+            # ВТОРОЕ: Остальные команды
             # Базовые команды (обрабатываются локально)
             if any(word in text_lower for word in ['привет', 'здравствуй']):
                 response = "Привет! Я Джарвис. Чем могу помочь?"
@@ -90,18 +157,6 @@ try:
                 response = self.system.get_system_info()
                 self.tts.speak(response)
             
-            elif any(word in text_lower for word in ['громче', 'тише', 'выключи звук', 'включи звук']):
-                if 'громче' in text_lower:
-                    action = 'громче'
-                elif 'тише' in text_lower:
-                    action = 'тише'
-                elif 'включи звук' in text_lower:
-                    action = 'включить звук'
-                else:
-                    action = 'выключить звук'
-                response = self.system.volume_control(action)
-                self.tts.speak(response)
-            
             elif any(word in text_lower for word in ['спать', 'перезагрузка', 'выключение']):
                 if 'спать' in text_lower:
                     action = 'спать'
@@ -116,16 +171,7 @@ try:
                 response = self.system.take_screenshot()
                 self.tts.speak(response)
             
-            # Команды ИИ
-            elif 'очисти историю' in text_lower or 'забудь всё' in text_lower:
-                self.ai_manager.clear_history()
-                response = "История разговора очищена"
-                self.tts.speak(response)
-            
-            elif any(word in text_lower for word in ['стоп', 'выход']):
-                self.tts.speak("До свидания!")
-                return False
-
+            # Настройки голоса
             elif 'скорость речи' in text_lower or 'скорость' in text_lower:
                 try:
                     if 'быстрее' in text_lower:
@@ -152,34 +198,6 @@ try:
                 except Exception as e:
                     self.tts.speak("Ошибка настройки скорости")
 
-            elif 'громкость голоса' in text_lower or 'громкость' in text_lower:
-                try:
-                    # Сначала проверяем ключевые слова
-                    if 'тише' in text_lower:
-                        current_volume = self.tts.voice_settings['volume']
-                        new_volume = max(0.1, current_volume - 0.2)
-                        response = self.tts.change_volume(new_volume)
-                        self.tts.speak(response)
-                        
-                    elif 'громче' in text_lower:
-                        current_volume = self.tts.voice_settings['volume']
-                        new_volume = min(1.0, current_volume + 0.2)
-                        response = self.tts.change_volume(new_volume)
-                        self.tts.speak(response)
-                        
-                    else:
-                        # Преобразуем слова в числа
-                        volume_number = self._words_to_number(text_lower)
-                        if volume_number is not None:
-                            new_volume = volume_number / 100.0
-                            response = self.tts.change_volume(new_volume)
-                            self.tts.speak(response)
-                        else:
-                            self.tts.speak("Скажите 'громкость голоса 80' или 'громкость голоса тише'")
-                            
-                except Exception as e:
-                    self.tts.speak("Ошибка настройки громкости")
-
             elif 'список голосов' in text_lower:
                 response = self.tts.list_available_voices()
                 self.tts.speak(response)
@@ -190,13 +208,22 @@ try:
 
             elif 'смени голос' in text_lower or 'измени голос' in text_lower:
                 try:
-                    import re
                     numbers = re.findall(r'\d+', text)
                     voice_index = int(numbers[0]) - 1 if numbers else 0
                     response = self.tts.set_voice(voice_index)
                     self.tts.speak(response)
                 except:
                     self.tts.speak("Скажите 'смени голос 1', 'смени голос 2' и т.д.")
+            
+            # Команды ИИ
+            elif 'очисти историю' in text_lower or 'забудь всё' in text_lower:
+                self.ai_manager.clear_history()
+                response = "История разговора очищена"
+                self.tts.speak(response)
+            
+            elif any(word in text_lower for word in ['стоп', 'выход', 'пока']):
+                self.tts.speak("До свидания!")
+                return False
 
             # Все остальное отправляем в ИИ
             else:
@@ -206,7 +233,7 @@ try:
                         response = self.ai_client.chat(text, context)
                         self.ai_manager.add_to_history(text, response)
                     else:
-                        response = "ИИ не настроен. Добавьте OPENAI_API_KEY в файл .env"
+                        response = "ИИ не настроен. Добавьте API ключи в файл .env"
                     self.tts.speak(response)
                 else:
                     self.tts.speak("Не понял команду")
