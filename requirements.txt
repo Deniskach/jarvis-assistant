@@ -1,6 +1,7 @@
 # Основные библиотеки
 speechrecognition==3.10.0
 pyttsx3==2.90
+vosk==0.3.45
 
 # Автоматизация
 PyAutoGUI==0.9.53
@@ -14,3 +15,6 @@ requests==2.31.0
 
 # Утилиты
 numpy==1.24.3
+
+# DVC
+dvc==3.0.0
