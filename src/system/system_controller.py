@@ -15,24 +15,63 @@ class SystemController:
     def open_program(self, program_name):
         """Открывает программы по имени"""
         programs = {
-            'браузер': 'chrome',
-            'chrome': 'chrome',
+            'браузер': 'browser',
             'блокнот': 'notepad',
             'калькулятор': 'calc',
             'проводник': 'explorer',
-            'word': 'winword',
-            'excel': 'excel',
+            'текстовый редактор': 'winword',
+            'таблицы': 'excel',
             'панель управления': 'control',
             'диспетчер задач': 'taskmgr'
         }
+
+        alternative_paths = {
+        'browser': [
+            r"C:\Program Files (x86)\Yandex\YandexBrowser\Application\browser.exe"
+        ],
+        'winword': [
+            r"C:\Program Files (x86)\Microsoft Office\Office14\WINWORD.EXE"
+        ],
+        'excel': [
+            r"C:\Program Files (x86)\Microsoft Office\Office14\EXCEL.EXE"
+        ]
+    }
         
         program_key = program_name.lower()
         if program_key in programs:
+            program_command = programs[program_key]
+        
+            # Сначала проверяем альтернативные пути
+            if program_command in alternative_paths:
+                for path in alternative_paths[program_command]:
+                    if os.path.exists(path):
+                        try:
+                            subprocess.Popen([path])
+                            return f"Открываю {program_name}"
+                        except Exception as e:
+                            continue
+            
+            # Если альтернативные пути не сработали, пробуем стандартную команду
             try:
-                subprocess.Popen(programs[program_key], shell=True)
-                return f"Открываю {program_name}"
+                # Для команд которые могут быть не в PATH, используем shell=True
+                if program_command in ['browser', 'winword', 'excel']:
+                    # Эти команды могут не быть в PATH, пробуем через shell
+                    result = subprocess.run(f'start "" "{program_command}"', shell=True, 
+                                        capture_output=True, text=True, timeout=5)
+                    if result.returncode == 0:
+                        return f"Открываю {program_name}"
+                    else:
+                        return f"Не удалось открыть {program_name}. Программа не установлена."
+                else:
+                    # Для системных команд которые всегда в PATH
+                    subprocess.Popen(program_command, shell=True)
+                    return f"Открываю {program_name}"
+                    
+            except subprocess.TimeoutExpired:
+                return f"Таймаут при открытии {program_name}"
             except Exception as e:
-                return f"Не удалось открыть {program_name}: {e}"
+                return f"Ошибка при открытии {program_name}: {e}"
+                
         else:
             return f"Не знаю как открыть {program_name}"
     
