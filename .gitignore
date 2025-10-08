@@ -24,10 +24,6 @@ wheels/
 venv/
 env/
 
-# DVC
-.dvc/tmp/
-.dvc/cache/
-
 # Environment variables
 .env
 
@@ -38,3 +34,13 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# DVC
+.dvc/tmp/
+.dvc/cache/

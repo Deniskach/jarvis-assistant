@@ -1,19 +1,27 @@
+import sys
+import os
 import logging
-from src.core.config_loader import ConfigLoader
-from src.voice.stt import SpeechRecognizer
-from src.voice.tts import SpeechSynthesizer
+
+# Добавляем путь к src в Python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from voice.stt import SpeechRecognizer
+    from voice.tts import SpeechSynthesizer
+except ImportError:
+    from src.voice.stt import SpeechRecognizer
+    from src.voice.tts import SpeechSynthesizer
 
 class Jarvis:
     def __init__(self):
-        self.config = ConfigLoader().load()
         self.setup_logging()
-        self.stt = SpeechRecognizer(self.config)
-        self.tts = SpeechSynthesizer(self.config)
+        self.stt = SpeechRecognizer()
+        self.tts = SpeechSynthesizer()
         self.is_listening = False
         
     def setup_logging(self):
         logging.basicConfig(
-            level=getattr(logging, self.config['logging']['level']),
+            level=logging.INFO,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         self.logger = logging.getLogger("Jarvis")
@@ -43,7 +51,7 @@ class Jarvis:
             
     def run(self):
         """Основной цикл работы"""
-        self.tts.speak(f"{self.config['assistant']['name']} запущен и готов к работе")
+        self.tts.speak("Джарвис запущен и готов к работе")
         self.logger.info("Ассистент запущен")
         
         while True:
